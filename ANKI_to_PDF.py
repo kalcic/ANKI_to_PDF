@@ -236,7 +236,7 @@ def create_pdf_connect(cards_data, output_pdf_path):
                 text_with_br = card['q_text'].replace('\n', '<br/>')
                 try:
                     # Správné escapování pro XML v ReportLab
-                    safe_text = text_with_br.replace('&', '&').replace('<', '<').replace('>', '>')
+                    safe_text = text_with_br.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     story.append(Paragraph(safe_text, text_style))
                 except ValueError as e:
                      print(f"   ERROR: Chyba ReportLab při zpracování odstavce (otázka) ID {card.get('note_id')}: {e}")
@@ -268,7 +268,7 @@ def create_pdf_connect(cards_data, output_pdf_path):
                 text_with_br = card['a_text'].replace('\n', '<br/>')
                 try:
                     # Správné escapování pro XML v ReportLab
-                    safe_text = text_with_br.replace('&', '&').replace('<', '<').replace('>', '>')
+                    safe_text = text_with_br.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                     story.append(Paragraph(safe_text, text_style))
                 except ValueError as e:
                      print(f"   ERROR: Chyba ReportLab při zpracování odstavce (odpověď) ID {card.get('note_id')}: {e}")

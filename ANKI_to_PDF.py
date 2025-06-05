@@ -300,10 +300,32 @@ def create_pdf_connect(cards_data, output_pdf_path):
         doc.build(story)
         print(f"INFO: PDF úspěšně vygenerováno: {output_pdf_path}")
 
+        # Spustit OCR v českém jazyce, pokud je dostupná knihovna ocrmypdf
+        apply_ocr_to_pdf(output_pdf_path, lang="ces")
+
     except Exception as e:
         print(f"ERROR: Neočekávaná chyba při generování PDF: {e}")
         import traceback
         traceback.print_exc()
+
+
+def apply_ocr_to_pdf(pdf_path, lang="ces"):
+    """Spustí OCR nad zadaným PDF a výsledek uloží zpět."""
+    try:
+        import ocrmypdf
+    except ImportError:
+        print("WARN: Knihovna 'ocrmypdf' není nainstalována. OCR bude přeskočeno.")
+        return
+
+    temp_output = pdf_path + ".ocr.tmp.pdf"
+    try:
+        ocrmypdf.ocr(pdf_path, temp_output, language=lang, force_ocr=True)
+        os.replace(temp_output, pdf_path)
+        print(f"INFO: OCR dokončeno: {pdf_path}")
+    except Exception as e:
+        print(f"ERROR: Chyba při provádění OCR: {e}")
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
 
 
 def main():

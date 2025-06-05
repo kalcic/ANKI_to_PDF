@@ -6,7 +6,6 @@ import argparse
 import os
 import io
 import re
-from bs4 import BeautifulSoup # Pro parsování HTML
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
                                 PageBreak, Flowable)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -68,10 +67,11 @@ class ResizableImage(Flowable):
                 print(f"   ERROR: Chyba při vykreslování obrázku: {e}")
 
 def parse_html_content(html_text):
-    """ Analyzuje HTML obsah pole, extrahuje text a názvy obrázkových souborů. """
+    """Analyzuje HTML obsah pole, extrahuje text a názvy obrázkových souborů."""
     if not html_text:
         return "", []
     try:
+        from bs4 import BeautifulSoup
         soup = BeautifulSoup(html_text, 'html.parser')
     except Exception as e:
         print(f"   WARN: Chyba při parsování HTML: {e}. Obsah pole: {html_text[:100]}...")

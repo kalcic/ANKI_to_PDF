@@ -318,16 +318,21 @@ def apply_ocr_to_pdf(pdf_path, lang="ces"):
         return
 
     temp_output = pdf_path + ".ocr.tmp.pdf"
-try:
-    # Avoid PDF/A conversion which can fail on very large documents
-    ocrmypdf.ocr(pdf_path, temp_output, language=lang, force_ocr=True,
-                 output_type="pdf")
-    os.replace(temp_output, pdf_path)
-    print(f"INFO: OCR dokončeno: {pdf_path}")
-except Exception as e:
-    print(f"ERROR: Chyba při provádění OCR: {e}")
-    if os.path.exists(temp_output):
-        os.remove(temp_output)
+    try:
+        # Avoid PDF/A conversion which can fail on very large documents
+        ocrmypdf.ocr(
+            pdf_path,
+            temp_output,
+            language=lang,
+            force_ocr=True,
+            output_type="pdf",
+        )
+        os.replace(temp_output, pdf_path)
+        print(f"INFO: OCR dokončeno: {pdf_path}")
+    except Exception as e:
+        print(f"ERROR: Chyba při provádění OCR: {e}")
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
 
 
 def main():

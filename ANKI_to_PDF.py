@@ -18,6 +18,15 @@ from reportlab.lib.colors import navy, black, red
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+# --- Globální log chyb ---
+error_log = []
+
+def log_error(note_id, message):
+    """Přidá položku do chybového logu a vypíše ji na konzoli."""
+    entry = f"note_id={note_id}: {message}"
+    print(f"   WARN: {entry}")
+    error_log.append(entry)
+
 # --- Konfigurace ---
 ANKICONNECT_URL = "http://127.0.0.1:8765" # Standardní adresa AnkiConnect
 ANKICONNECT_VERSION = 6
@@ -30,10 +39,14 @@ ANSWER_FIELD_NAMES = ["back", "answer", "odpověď", "a", "definition", "back ex
 
 class ResizableImage(Flowable):
     """ Vlastní Flowable pro obrázek, který se přizpůsobí šířce stránky. """
-    def __init__(self, img_data, max_width, max_height=None):
+    def __init__(self, img_data, max_width, max_height=None, note_id=None,
+                 img_filename=None, err_log=None):
         self.img_data = img_data
         self.max_width = max_width
         self.max_height = max_height
+        self.note_id = note_id
+        self.img_filename = img_filename
+        self.err_log = err_log
         self._img_width = 0
         self._img_height = 0
         self.drawWidth = 0
@@ -42,7 +55,11 @@ class ResizableImage(Flowable):
             img_reader = ImageReader(io.BytesIO(self.img_data))
             self._img_width, self._img_height = img_reader.getSize()
         except Exception as e:
-            print(f"   WARN: Nelze načíst rozměry obrázku: {e}")
+            if err_log is not None:
+                log_error(self.note_id,
+                          f"obrázek '{self.img_filename}' - Nelze načíst rozměry: {e}")
+            else:
+                print(f"   WARN: Nelze načíst rozměry obrázku: {e}")
         if self._img_width > 0 and self._img_height > 0:
             aspect_ratio = self._img_height / float(self._img_width)
             self.drawWidth = min(self.max_width, self._img_width)
@@ -64,7 +81,11 @@ class ResizableImage(Flowable):
                 img = Image(io.BytesIO(self.img_data), width=self.drawWidth, height=self.drawHeight)
                 img.drawOn(self.canv, 0, 0)
             except Exception as e:
-                print(f"   ERROR: Chyba při vykreslování obrázku: {e}")
+                if self.err_log is not None:
+                    log_error(self.note_id,
+                              f"obrázek '{self.img_filename}' - Chyba při vykreslování: {e}")
+                else:
+                    print(f"   ERROR: Chyba při vykreslování obrázku: {e}")
 
 def parse_html_content(html_text):
     """Analyzuje HTML obsah pole, extrahuje text a názvy obrázkových souborů."""
@@ -117,14 +138,18 @@ def anki_request(action, **params):
         print(f"ERROR: AnkiConnect vrátil neplatnou JSON odpověď pro akci '{action}'. Obsah: {response.text[:200]}...")
         return None
 
-def get_media_data(filename):
+def get_media_data(filename, note_id=None):
     """ Získá binární data mediálního souboru přes AnkiConnect. """
     result = anki_request('retrieveMediaFile', filename=filename)
     if result:
         try:
             return base64.b64decode(result)
         except (TypeError, ValueError) as e:
-            print(f"   ERROR: Chyba při dekódování base64 dat pro soubor '{filename}': {e}")
+            if note_id is not None:
+                log_error(note_id,
+                          f"obrázek '{filename}' - Chyba při dekódování base64: {e}")
+            else:
+                print(f"   ERROR: Chyba při dekódování base64 dat pro soubor '{filename}': {e}")
             return None
     return None
 
@@ -248,16 +273,20 @@ def create_pdf_connect(cards_data, output_pdf_path):
             # Obrázky k otázce
             for img_filename in card['q_images']:
                 print(f"   INFO: Načítám médium (Q): {img_filename}")
-                img_data = get_media_data(img_filename)
+                img_data = get_media_data(img_filename, note_id=card.get('note_id'))
                 if img_data:
-                    res_img = ResizableImage(img_data, max_width=available_width * 0.9)
+                    res_img = ResizableImage(img_data, max_width=available_width * 0.9,
+                                           note_id=card.get('note_id'),
+                                           img_filename=img_filename,
+                                           err_log=error_log)
                     if res_img.width > 0 :
                          story.append(res_img)
                          story.append(Spacer(1, 0.2*cm))
                     else:
                          story.append(Paragraph(f"[Obrázek '{img_filename}' nelze zobrazit]", text_style_error))
                 else:
-                     print(f"   WARN: Nepodařilo se načíst data pro obrázek '{img_filename}' přes AnkiConnect.")
+                     log_error(card.get('note_id'),
+                               f"obrázek '{img_filename}' - Nepodařilo se načíst data přes AnkiConnect")
                      story.append(Paragraph(f"[Obrázek '{img_filename}' se nepodařilo načíst]", text_style_error))
 
             story.append(Spacer(1, 0.6*cm))
@@ -280,16 +309,20 @@ def create_pdf_connect(cards_data, output_pdf_path):
              # Obrázky k odpovědi
             for img_filename in card['a_images']:
                 print(f"   INFO: Načítám médium (A): {img_filename}")
-                img_data = get_media_data(img_filename)
+                img_data = get_media_data(img_filename, note_id=card.get('note_id'))
                 if img_data:
-                    res_img = ResizableImage(img_data, max_width=available_width * 0.9)
+                    res_img = ResizableImage(img_data, max_width=available_width * 0.9,
+                                           note_id=card.get('note_id'),
+                                           img_filename=img_filename,
+                                           err_log=error_log)
                     if res_img.width > 0:
                          story.append(res_img)
                          story.append(Spacer(1, 0.2*cm))
                     else:
                          story.append(Paragraph(f"[Obrázek '{img_filename}' nelze zobrazit]", text_style_error))
                 else:
-                     print(f"   WARN: Nepodařilo se načíst data pro obrázek '{img_filename}' přes AnkiConnect.")
+                     log_error(card.get('note_id'),
+                               f"obrázek '{img_filename}' - Nepodařilo se načíst data přes AnkiConnect")
                      story.append(Paragraph(f"[Obrázek '{img_filename}' se nepodařilo načíst]", text_style_error))
 
             # Oddělovač
@@ -299,6 +332,14 @@ def create_pdf_connect(cards_data, output_pdf_path):
         # Sestavení PDF
         doc.build(story)
         print(f"INFO: PDF úspěšně vygenerováno: {output_pdf_path}")
+
+        if error_log:
+            log_path = os.path.splitext(output_pdf_path)[0] + "_errors.txt"
+            with open(log_path, "w", encoding="utf-8") as fh:
+                fh.write("Chybové hlášky při generování PDF\n")
+                for entry in error_log:
+                    fh.write(entry + "\n")
+            print(f"INFO: Seznam problémových karet uložen do: {log_path}")
 
         # Spustit OCR v českém jazyce, pokud je dostupná knihovna ocrmypdf
         apply_ocr_to_pdf(output_pdf_path, lang="ces")

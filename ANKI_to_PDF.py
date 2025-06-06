@@ -6,7 +6,6 @@ import argparse
 import os
 import io
 import re
-from bs4 import BeautifulSoup # Pro parsování HTML
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
                                 PageBreak, Flowable)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -68,10 +67,11 @@ class ResizableImage(Flowable):
                 print(f"   ERROR: Chyba při vykreslování obrázku: {e}")
 
 def parse_html_content(html_text):
-    """ Analyzuje HTML obsah pole, extrahuje text a názvy obrázkových souborů. """
+    """Analyzuje HTML obsah pole, extrahuje text a názvy obrázkových souborů."""
     if not html_text:
         return "", []
     try:
+        from bs4 import BeautifulSoup
         soup = BeautifulSoup(html_text, 'html.parser')
     except Exception as e:
         print(f"   WARN: Chyba při parsování HTML: {e}. Obsah pole: {html_text[:100]}...")
@@ -300,10 +300,34 @@ def create_pdf_connect(cards_data, output_pdf_path):
         doc.build(story)
         print(f"INFO: PDF úspěšně vygenerováno: {output_pdf_path}")
 
+        # Spustit OCR v českém jazyce, pokud je dostupná knihovna ocrmypdf
+        apply_ocr_to_pdf(output_pdf_path, lang="ces")
+
     except Exception as e:
         print(f"ERROR: Neočekávaná chyba při generování PDF: {e}")
         import traceback
         traceback.print_exc()
+
+
+def apply_ocr_to_pdf(pdf_path, lang="ces"):
+    """Spustí OCR nad zadaným PDF a výsledek uloží zpět."""
+    try:
+        import ocrmypdf
+    except ImportError:
+        print("WARN: Knihovna 'ocrmypdf' není nainstalována. OCR bude přeskočeno.")
+        return
+
+    temp_output = pdf_path + ".ocr.tmp.pdf"
+    try:
+        # Avoid PDF/A conversion which can fail on very large documents
+        ocrmypdf.ocr(pdf_path, temp_output, language=lang, force_ocr=True,
+                     output_type="pdf")
+        os.replace(temp_output, pdf_path)
+        print(f"INFO: OCR dokončeno: {pdf_path}")
+    except Exception as e:
+        print(f"ERROR: Chyba při provádění OCR: {e}")
+        if os.path.exists(temp_output):
+            os.remove(temp_output)
 
 
 def main():

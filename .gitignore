@@ -5,7 +5,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
-
+ANNKI_to_PDF_erroros-txt
 # macOS
 .DS_Store
 

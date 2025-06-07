@@ -1,0 +1,9 @@
+Chybové hlášky při generování PDF
+note_id=1677583452120: obrázek 'Snímek obrazovky 2021-02-07 v 9.26.30.png' - Nelze načíst rozměry: 
+fileName=<_io.BytesIO object at 0x105073650> identity=[ImageReader@0x104a59a50] cannot identify image file <_io.BytesIO object at 0x105073650>
+note_id=1677583568829: obrázek 'Snímek obrazovky 2021-02-07 v 9.32.03.png' - Nelze načíst rozměry: 
+fileName=<_io.BytesIO object at 0x10721ab10> identity=[ImageReader@0x105ee1010] cannot identify image file <_io.BytesIO object at 0x10721ab10>
+note_id=1710596842727: obrázek 'smiley.svg' - Nelze načíst rozměry: 
+fileName=<_io.BytesIO object at 0x126271620> identity=[ImageReader@0x125ed5630] cannot identify image file <_io.BytesIO object at 0x126271620>
+note_id=1737032229688: obrázek 'yes.svg' - Nelze načíst rozměry: 
+fileName=<_io.BytesIO object at 0x1304ae2a0> identity=[ImageReader@0x1302d65d0] cannot identify image file <_io.BytesIO object at 0x1304ae2a0>

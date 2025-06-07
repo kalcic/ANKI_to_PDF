@@ -396,7 +396,26 @@ def apply_ocr_to_pdf(pdf_path, lang="ces", force=False):
         os.replace(temp_output, pdf_path)
         print(f"INFO: OCR dokončeno: {pdf_path}")
     except Exception as e:
-        print(f"ERROR: Chyba při provádění OCR: {e}")
+        # If OCR failed because the PDF already contains text, retry with force
+        if "page already has text" in str(e).lower() and not force:
+            print("INFO: PDF již obsahuje text. Opakuji OCR s volbou --force-ocr.")
+            try:
+                ocrmypdf.ocr(
+                    pdf_path,
+                    temp_output,
+                    language=lang,
+                    skip_text=False,
+                    force_ocr=True,
+                    optimize=3,
+                    output_type="pdf",
+                )
+                os.replace(temp_output, pdf_path)
+                print(f"INFO: OCR dokončeno s --force-ocr: {pdf_path}")
+                return
+            except Exception as e2:
+                print(f"ERROR: OCR s --force-ocr selhalo: {e2}")
+        else:
+            print(f"ERROR: Chyba při provádění OCR: {e}")
         if os.path.exists(temp_output):
             os.remove(temp_output)
 

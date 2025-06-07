@@ -360,13 +360,13 @@ def apply_ocr_to_pdf(pdf_path, lang="ces"):
 
     temp_output = pdf_path + ".ocr.tmp.pdf"
     try:
-        # Use skip_text to avoid rasterizing pages that already contain text
-        # and enable optimization to keep the output size reasonable
+        # Run OCR on all pages so text embedded in images is also recognized
+        # while keeping the output optimized.
         ocrmypdf.ocr(
             pdf_path,
             temp_output,
             language=lang,
-            skip_text=True,
+            skip_text=False,
             optimize=3,
             output_type="pdf",
         )

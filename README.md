@@ -1,6 +1,6 @@
 # ANKI to PDF
 
-This repository contains a script to export Anki decks to PDF via AnkiConnect. If the optional `ocrmypdf` package is installed, the script can run OCR on the generated PDF. Pages that already contain text are skipped to avoid unnecessary rasterization.
+This repository contains a script to export Anki decks to PDF via AnkiConnect. If the optional `ocrmypdf` package is installed, the script can run OCR on the generated PDF. The script performs OCR on each page so text contained in images is recognized.
 
 ## Setup
 
@@ -17,7 +17,7 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
-The `ocrmypdf` package is listed in `requirements.txt`. It enables optional OCR when the script generates the PDF. Pages that already contain text are skipped by default, so OCR typically does not inflate the file size. If `ocrmypdf` is not installed, the script simply skips this step.
+The `ocrmypdf` package is listed in `requirements.txt`. It enables optional OCR when the script generates the PDF. By processing every page, the script can extract text from screenshots or other images. If `ocrmypdf` is not installed, the script simply skips this step.
 
 ## Usage
 

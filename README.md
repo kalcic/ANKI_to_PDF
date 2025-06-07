@@ -28,4 +28,4 @@ force options can be provided via flags:
 python ANKI_to_PDF.py "My Deck" output.pdf --ocr-lang "ces+chi_sim" --force-ocr
 ```
 
-The script will connect to Anki using AnkiConnect, export the selected deck and save it to `output.pdf`.
+The script will connect to Anki using AnkiConnect, export the selected deck and save it to `output.pdf`. If OCR fails because the PDF already contains text, it automatically retries with the `--force-ocr` option.

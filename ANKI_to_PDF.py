@@ -376,9 +376,16 @@ def apply_ocr_to_pdf(pdf_path, lang="ces", force=False):
     """
     try:
         import ocrmypdf
+        from ocrmypdf import Verbosity, configure_logging
     except ImportError:
         print("WARN: Knihovna 'ocrmypdf' není nainstalována. OCR bude přeskočeno.")
         return
+
+    # Suppress verbose Ghostscript warnings by setting OCRmyPDF to quiet mode
+    try:
+        configure_logging(Verbosity.quiet)
+    except Exception:
+        pass
 
     temp_output = pdf_path + ".ocr.tmp.pdf"
     try:

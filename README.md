@@ -21,10 +21,11 @@ The `ocrmypdf` package is listed in `requirements.txt`. It enables optional OCR 
 
 ## Usage
 
-Run the script with the deck name and desired output file:
+Run the script with the deck name and desired output file. OCR language and
+force options can be provided via flags:
 
 ```bash
-python ANKI_to_PDF.py "My Deck" output.pdf
+python ANKI_to_PDF.py "My Deck" output.pdf --ocr-lang "ces+chi_sim" --force-ocr
 ```
 
 The script will connect to Anki using AnkiConnect, export the selected deck and save it to `output.pdf`.

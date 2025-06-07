@@ -214,8 +214,20 @@ def extract_anki_data_connect(deck_name):
     print(f"INFO: Načtena data pro {len(extracted_notes)} unikátních poznámek.")
     return list(extracted_notes.values())
 
-def create_pdf_connect(cards_data, output_pdf_path):
-    """ Vytvoří PDF soubor z extrahovaných dat kartiček (verze pro AnkiConnect). """
+def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=False):
+    """Vytvoří PDF soubor z extrahovaných dat kartiček a případně spustí OCR.
+
+    Parametry
+    ---------
+    cards_data : list
+        Seznam slovníkových struktur s obsahem karet.
+    output_pdf_path : str
+        Cesta k výstupnímu PDF souboru.
+    ocr_lang : str, optional
+        Jazyk(y) pro OCR, předává se do Tesseractu.
+    force_ocr : bool, optional
+        Pokud je ``True``, OCR proběhne i na stránkách s existujícím textem.
+    """
     if not cards_data:
         print("INFO: Nebyla nalezena žádná data kartiček pro generování PDF.")
         return
@@ -341,8 +353,8 @@ def create_pdf_connect(cards_data, output_pdf_path):
                     fh.write(entry + "\n")
             print(f"INFO: Seznam problémových karet uložen do: {log_path}")
 
-        # Spustit OCR v českém jazyce, pokud je dostupná knihovna ocrmypdf
-        apply_ocr_to_pdf(output_pdf_path, lang="ces")
+        # Spustit OCR, pokud je dostupná knihovna ocrmypdf
+        apply_ocr_to_pdf(output_pdf_path, lang=ocr_lang, force=force_ocr)
 
     except Exception as e:
         print(f"ERROR: Neočekávaná chyba při generování PDF: {e}")
@@ -350,8 +362,18 @@ def create_pdf_connect(cards_data, output_pdf_path):
         traceback.print_exc()
 
 
-def apply_ocr_to_pdf(pdf_path, lang="ces"):
-    """Spustí OCR nad zadaným PDF a výsledek uloží zpět."""
+def apply_ocr_to_pdf(pdf_path, lang="ces", force=False):
+    """Spustí OCR nad zadaným PDF a výsledek uloží zpět.
+
+    Parametry
+    ---------
+    pdf_path : str
+        Cesta k PDF souboru, na který se má spustit OCR.
+    lang : str, optional
+        Jazyk nebo kombinace jazyků pro Tesseract (např. "ces+chi_sim").
+    force : bool, optional
+        Pokud je ``True``, OCR proběhne i na stránkách, které již obsahují text.
+    """
     try:
         import ocrmypdf
     except ImportError:
@@ -367,6 +389,7 @@ def apply_ocr_to_pdf(pdf_path, lang="ces"):
             temp_output,
             language=lang,
             skip_text=False,
+            force_ocr=force,
             optimize=3,
             output_type="pdf",
         )
@@ -383,6 +406,16 @@ def main():
     parser = argparse.ArgumentParser(description="Extrahuje data z Anki pomocí AnkiConnect a exportuje je do PDF.")
     parser.add_argument("deck_name", help="Přesný název Anki balíčku, který chcete exportovat.")
     parser.add_argument("output_pdf", help="Cesta pro výstupní PDF soubor.")
+    parser.add_argument(
+        "--ocr-lang",
+        default="ces",
+        help="Jazyk(y) pro OCR (např. 'ces+chi_sim').",
+    )
+    parser.add_argument(
+        "--force-ocr",
+        action="store_true",
+        help="Vynutit OCR i na stránkách, které již obsahují text.",
+    )
 
     args = parser.parse_args()
 
@@ -399,7 +432,12 @@ def main():
 
     # Krok 2: Vytvořit PDF, pokud máme data
     if cards_data:
-        create_pdf_connect(cards_data, args.output_pdf)
+        create_pdf_connect(
+            cards_data,
+            args.output_pdf,
+            ocr_lang=args.ocr_lang,
+            force_ocr=args.force_ocr,
+        )
     elif cards_data is None:
          print("INFO: Generování PDF přeskočeno kvůli chybám při komunikaci s AnkiConnect.")
     else:

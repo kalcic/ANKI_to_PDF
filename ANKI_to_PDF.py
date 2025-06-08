@@ -13,6 +13,11 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.lib.pagesizes import A4
+# Optional komprese obrázků pomocí Pillow
+try:
+    from PIL import Image as PILImage
+except ImportError:  # Pillow není nainstalována
+    PILImage = None
 from reportlab.lib.colors import navy, black, red
 # Importy pro registraci TTF fontu
 from reportlab.pdfbase import pdfmetrics
@@ -20,6 +25,25 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # --- Globální log chyb ---
 error_log = []
+# Cache pro již načtené mediální soubory
+IMAGE_CACHE = {}
+
+# Výchozí kompresní kvalita pro ukládání obrázků
+DEFAULT_IMAGE_QUALITY = 85
+
+def compress_image(data, quality=DEFAULT_IMAGE_QUALITY):
+    """Zmenší a zkomprimuje obrázek do JPEG, pokud je k dispozici Pillow."""
+    if PILImage is None:
+        return data
+    try:
+        with PILImage.open(io.BytesIO(data)) as im:
+            rgb_im = im.convert("RGB")
+            out = io.BytesIO()
+            rgb_im.save(out, format="JPEG", quality=quality, optimize=True)
+            return out.getvalue()
+    except Exception:
+        # Pokud komprese selže, vrátíme původní data
+        return data
 
 def log_error(note_id, message):
     """Přidá položku do chybového logu a vypíše ji na konzoli."""
@@ -138,12 +162,18 @@ def anki_request(action, **params):
         print(f"ERROR: AnkiConnect vrátil neplatnou JSON odpověď pro akci '{action}'. Obsah: {response.text[:200]}...")
         return None
 
-def get_media_data(filename, note_id=None):
-    """ Získá binární data mediálního souboru přes AnkiConnect. """
+def get_media_data(filename, note_id=None, quality=DEFAULT_IMAGE_QUALITY):
+    """Získá binární data mediálního souboru přes AnkiConnect s cachingem a případnou kompresí."""
+    if filename in IMAGE_CACHE:
+        return IMAGE_CACHE[filename]
     result = anki_request('retrieveMediaFile', filename=filename)
     if result:
         try:
-            return base64.b64decode(result)
+            data = base64.b64decode(result)
+            if quality is not None:
+                data = compress_image(data, quality=quality)
+            IMAGE_CACHE[filename] = data
+            return data
         except (TypeError, ValueError) as e:
             if note_id is not None:
                 log_error(note_id,
@@ -214,7 +244,7 @@ def extract_anki_data_connect(deck_name):
     print(f"INFO: Načtena data pro {len(extracted_notes)} unikátních poznámek.")
     return list(extracted_notes.values())
 
-def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=False):
+def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=False, image_quality=DEFAULT_IMAGE_QUALITY):
     """Vytvoří PDF soubor z extrahovaných dat kartiček a případně spustí OCR.
 
     Parametry
@@ -227,6 +257,8 @@ def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=Fa
         Jazyk(y) pro OCR, předává se do Tesseractu.
     force_ocr : bool, optional
         Pokud je ``True``, OCR proběhne i na stránkách s existujícím textem.
+    image_quality : int, optional
+        Kvalita JPEG komprese (1-95) pro vložené obrázky. Hodnota ``None`` vypne kompresi.
     """
     if not cards_data:
         print("INFO: Nebyla nalezena žádná data kartiček pro generování PDF.")
@@ -285,7 +317,7 @@ def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=Fa
             # Obrázky k otázce
             for img_filename in card['q_images']:
                 print(f"   INFO: Načítám médium (Q): {img_filename}")
-                img_data = get_media_data(img_filename, note_id=card.get('note_id'))
+                img_data = get_media_data(img_filename, note_id=card.get('note_id'), quality=image_quality)
                 if img_data:
                     res_img = ResizableImage(img_data, max_width=available_width * 0.9,
                                            note_id=card.get('note_id'),
@@ -321,7 +353,7 @@ def create_pdf_connect(cards_data, output_pdf_path, ocr_lang="ces", force_ocr=Fa
              # Obrázky k odpovědi
             for img_filename in card['a_images']:
                 print(f"   INFO: Načítám médium (A): {img_filename}")
-                img_data = get_media_data(img_filename, note_id=card.get('note_id'))
+                img_data = get_media_data(img_filename, note_id=card.get('note_id'), quality=image_quality)
                 if img_data:
                     res_img = ResizableImage(img_data, max_width=available_width * 0.9,
                                            note_id=card.get('note_id'),
@@ -442,6 +474,12 @@ def main():
         action="store_true",
         help="Vynutit OCR i na stránkách, které již obsahují text.",
     )
+    parser.add_argument(
+        "--image-quality",
+        type=int,
+        default=DEFAULT_IMAGE_QUALITY,
+        help="Kvalita JPEG komprese pro obrázky (1-95). Hodnota 0 vypne kompresi.",
+    )
 
     args = parser.parse_args()
 
@@ -463,6 +501,7 @@ def main():
             args.output_pdf,
             ocr_lang=args.ocr_lang,
             force_ocr=args.force_ocr,
+            image_quality=(args.image_quality if args.image_quality > 0 else None),
         )
     elif cards_data is None:
          print("INFO: Generování PDF přeskočeno kvůli chybám při komunikaci s AnkiConnect.")
